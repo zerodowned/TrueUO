@@ -25,6 +25,7 @@ namespace Server.Items
                         {
                             PetGroomer.AddPlayerCostume((PlayerMobile)from, t.Cliloc);
                             from.SendLocalizedMessage(1159763, string.Format("#{0}", t.Cliloc)); // Your purchased ~1_COSTUME~ has been credited to your character. Visit the nearest pet groomer to apply this costume to your pet.
+                            Delete();
                         }
                     }
                 }                
