@@ -15,7 +15,13 @@ namespace Server.Mobiles
 
         [Constructable]
         public AnimalTrainer()
-            : base("the animal trainer")
+            : this("the animal trainer")
+        {
+        }
+
+        [Constructable]
+        public AnimalTrainer(string title)
+            : base(title)
         {
             SetSkill(SkillName.AnimalLore, 64.0, 100.0);
             SetSkill(SkillName.AnimalTaming, 90.0, 100.0);

@@ -1798,6 +1798,11 @@ namespace Server.Mobiles
                 m_Mobile.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 1043255, $"{m_Mobile.Name}", master.NetState); // ~1_NAME~ appears to have decided that it is better off without a master!
             }
 
+            if (PetGroomer.IsInCostume(m_Mobile))
+            {
+                PetGroomer.ReturnCostume(m_Mobile);
+            }
+
             m_Mobile.SetControlMaster(null);
             m_Mobile.SummonMaster = null;
 
@@ -2088,6 +2093,10 @@ namespace Server.Mobiles
                 {
                     from.SendMessage("You may not transfer a pet that has recently been in combat.");
                     to.SendMessage("The pet may not be transfered to you because it has recently been in combat.");
+                }
+                else if (PetGroomer.IsInCostume(m_Mobile))
+                {
+                    from.SendLocalizedMessage(1159788); // You may not transfer a pet with a costume.
                 }
                 else if (m_Mobile.CanTransfer(from))
                 {
