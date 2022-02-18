@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Diagnostics;
 
 namespace Server.Commands
 {
@@ -109,6 +110,7 @@ namespace Server.Commands
                 if (e.Mobile != null)
                     e.Mobile.SendMessage("Usage: CreateWorld [nogump]");
             }
+            Console.WriteLine("Opening");
         }
 
         [Usage("DeleteWorld [nogump]")]
@@ -184,8 +186,12 @@ namespace Server.Commands
                 {
                     CommandEntry entry = Commands[i];
 
+
                     if (entry.CheckID == sel)
                     {
+                        Stopwatch sw = new Stopwatch();
+
+                        sw.Start();
                         switch (type)
                         {
                             case GumpType.Create:
@@ -224,7 +230,12 @@ namespace Server.Commands
 
                                 break;
                         }
+
+                        sw.Stop();
+
+                        Console.WriteLine("{0} Elapsed: {1}", sw.Elapsed, entry.Name);
                     }
+
                 }
             }
 
@@ -457,6 +468,14 @@ namespace Server.Gumps
 
         public override void OnResponse(RelayInfo info)
         {
+            // ...
+            Stopwatch sw = new Stopwatch();
+
+            sw.Start();
+
+
+
+
             switch (info.ButtonID)
             {
                 case 0: // Closed or Cancel
@@ -485,6 +504,9 @@ namespace Server.Gumps
                     Refresh();
                     break;
             }
+            sw.Stop();
+
+            Console.WriteLine("Elapsed={0}", sw.Elapsed);
         }
     }
 
