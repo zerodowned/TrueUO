@@ -554,6 +554,159 @@ namespace Server.Commands
         }
         #endregion
 
+                #region Bodies
+        public static List<BodyEntry> LoadBodies()
+        {
+            List<BodyEntry> list = new List<BodyEntry>();
+
+            string path = Path.Combine(Core.BaseDirectory, "Data/models.txt");
+
+            if (File.Exists(path))
+            {
+                using (StreamReader ip = new StreamReader(path))
+                {
+                    string line;
+
+                    while ((line = ip.ReadLine()) != null)
+                    {
+                        line = line.Trim();
+
+                        if (line.Length == 0 || line.StartsWith("#"))
+                        {
+                            continue;
+                        }
+
+                        string[] split = line.Split('\t');
+
+                        if (split.Length < 3)
+                        {
+                            continue;
+                        }
+
+                        int body;
+
+                        if (!int.TryParse(split[0], out body))
+                        {
+                            continue;
+                        }
+
+                        ModelBodyType type;
+
+                        if (!Enum.TryParse(split[1], out type))
+                        {
+                            type = ModelBodyType.Invalid;
+                        }
+
+                        string name = string.Join(" ", split.Skip(2).Select(n => !string.IsNullOrWhiteSpace(n) ? n : "unknown"));
+
+                        BodyEntry entry = new BodyEntry(body, type, name);
+
+                        if (!list.Contains(entry))
+                        {
+                            list.Add(entry);
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+
+        private static void DocumentBodies()
+        {
+            List<BodyEntry> list = LoadBodies();
+
+            using (StreamWriter html = GetWriter("docs/", "bodies.html"))
+            {
+                html.WriteLine("<!DOCTYPE html>");
+                html.WriteLine("<html>");
+                html.WriteLine("   <head>");
+                html.WriteLine("      <title>RunUO Documentation - Body List</title>");
+                html.WriteLine("      <style type=\"text/css\">");
+                html.WriteLine("      body { background-color: white; font-family: Tahoma; color: #000000; }");
+                html.WriteLine("      a, a:visited { color: #000000; }");
+                html.WriteLine("      a:active, a:hover { color: #808080; }");
+                html.WriteLine("      table { width: 100%; }");
+                html.WriteLine("      td.header { width: 100%; }");
+                html.WriteLine("      </style>");
+                html.WriteLine("      <link rel=\"stylesheet\" type=\"text/css\" href=\"styles.css\" />");
+                html.WriteLine("   </head>");
+                html.WriteLine("   <body>");
+                html.WriteLine("      <a name=\"Top\" />");
+                html.WriteLine("      <h4><a href=\"index.html\">Back to the index</a></h4>");
+
+                if (list.Count > 0)
+                {
+                    html.WriteLine("      <h2>Body List</h2>");
+
+                    list.Sort(new BodyEntrySorter());
+
+                    ModelBodyType lastType = ModelBodyType.Invalid;
+
+                    foreach (BodyEntry entry in list)
+                    {
+                        ModelBodyType type = entry.BodyType;
+
+                        if (type != lastType)
+                        {
+                            if (lastType != ModelBodyType.Invalid)
+                            {
+                                html.WriteLine("      </table></td></tr></table><br />");
+                            }
+
+                            lastType = type;
+
+                            html.WriteLine("      <a name=\"{0}\" />", type);
+
+                            switch (type)
+                            {
+                                case ModelBodyType.Monsters:
+                                    html.WriteLine(
+                                        "      <b>Monsters</b> | <a href=\"#Sea\">Sea</a> | <a href=\"#Animals\">Animals</a> | <a href=\"#Human\">Human</a> | <a href=\"#Equipment\">Equipment</a><br /><br />");
+                                    break;
+                                case ModelBodyType.Sea:
+                                    html.WriteLine(
+                                        "      <a href=\"#Top\">Monsters</a> | <b>Sea</b> | <a href=\"#Animals\">Animals</a> | <a href=\"#Human\">Human</a> | <a href=\"#Equipment\">Equipment</a><br /><br />");
+                                    break;
+                                case ModelBodyType.Animals:
+                                    html.WriteLine(
+                                        "      <a href=\"#Top\">Monsters</a> | <a href=\"#Sea\">Sea</a> | <b>Animals</b> | <a href=\"#Human\">Human</a> | <a href=\"#Equipment\">Equipment</a><br /><br />");
+                                    break;
+                                case ModelBodyType.Human:
+                                    html.WriteLine(
+                                        "      <a href=\"#Top\">Monsters</a> | <a href=\"#Sea\">Sea</a> | <a href=\"#Animals\">Animals</a> | <b>Human</b> | <a href=\"#Equipment\">Equipment</a><br /><br />");
+                                    break;
+                                case ModelBodyType.Equipment:
+                                    html.WriteLine(
+                                        "      <a href=\"#Top\">Monsters</a> | <a href=\"#Sea\">Sea</a> | <a href=\"#Animals\">Animals</a> | <a href=\"#Human\">Human</a> | <b>Equipment</b><br /><br />");
+                                    break;
+                            }
+
+                            html.WriteLine("      <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">");
+                            html.WriteLine("      <tr><td class=\"tbl-border\">");
+                            html.WriteLine("      <table cellpadding=\"4\" cellspacing=\"1\">");
+                            html.WriteLine("         <tr><td colspan=\"2\" class=\"header\">{0}</td></tr>", type);
+                        }
+
+                        html.WriteLine(
+                            "         <tr><td class=\"lentry\">{0}</td><td class=\"rentry\">{1}</td></tr>",
+                            entry.Body.BodyID,
+                            entry.Name);
+                    }
+
+                    html.WriteLine("      </table>");
+                }
+                else
+                {
+                    html.WriteLine("      This feature requires a UO:3D installation.");
+                }
+
+                html.WriteLine("   </body>");
+                html.WriteLine("</html>");
+            }
+        }
+        #endregion
+
         #region Speech
         private static void DocumentKeywords()
         {

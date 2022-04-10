@@ -33,7 +33,7 @@ namespace Server.Mobiles
             {
                 AccessLevel = AccessLevel.Administrator;
                 Supports = CommandSupport.Area | CommandSupport.Region | CommandSupport.Global | CommandSupport.Multi | CommandSupport.Single;
-                Commands = new[] { "ExportSpawner" };
+                Commands = new string[] { "ExportSpawner" };
                 ObjectTypes = ObjectTypes.Items;
                 Usage = "ExportSpawner <filename>";
                 Description = "Exports all Spawner objects to the specified filename.";
@@ -51,7 +51,7 @@ namespace Server.Mobiles
                     if (list[i] is Spawner)
                     {
                         Spawner spawner = (Spawner)list[i];
-                        if (!spawner.Deleted && spawner.Map != Map.Internal && spawner.Parent == null)
+                        if (spawner != null && !spawner.Deleted && spawner.Map != Map.Internal && spawner.Parent == null)
                             spawners.Add(spawner);
                     }
                 }
@@ -61,7 +61,7 @@ namespace Server.Mobiles
                 ExportSpawners(spawners, filename);
             }
 
-            public override bool ValidateArgs(CommandEventArgs e)
+            public override bool ValidateArgs(BaseCommandImplementor impl, CommandEventArgs e)
             {
                 if (e.Arguments.Length >= 1)
                     return true;
@@ -104,7 +104,7 @@ namespace Server.Mobiles
                 }
             }
 
-            private void ExportSpawner(Spawner spawner, XmlWriter xml)
+            private void ExportSpawner(Spawner spawner, XmlTextWriter xml)
             {
                 xml.WriteStartElement("spawner");
 
@@ -181,24 +181,17 @@ namespace Server.Mobiles
 
                     int successes = 0, failures = 0;
 
-                    if (root != null)
+                    foreach (XmlElement spawner in root.GetElementsByTagName("spawner"))
                     {
-                        var name = root.GetElementsByTagName("spawner");
-
-                        for (var index = 0; index < name.Count; index++)
+                        try
                         {
-                            var spawner = (XmlElement) name[index];
-
-                            try
-                            {
-                                ImportSpawner(spawner);
-                                successes++;
-                            }
-                            catch (Exception ex)
-                            {
-                                failures++;
-                                Diagnostics.ExceptionLogging.LogException(ex);
-                            }
+                            ImportSpawner(spawner);
+                            successes++;
+                        }
+                        catch (Exception ex)
+                        {
+                            failures++;
+                            Diagnostics.ExceptionLogging.LogException(ex);
                         }
                     }
 
@@ -215,7 +208,7 @@ namespace Server.Mobiles
             }
         }
 
-        private static string GetText(XmlNode node, string defaultValue)
+        private static string GetText(XmlElement node, string defaultValue)
         {
             if (node == null)
                 return defaultValue;
@@ -223,7 +216,7 @@ namespace Server.Mobiles
             return node.InnerText;
         }
 
-        private static void ImportSpawner(XmlNode node)
+        private static void ImportSpawner(XmlElement node)
         {
             int count = int.Parse(GetText(node["count"], "1"));
             int homeRange = int.Parse(GetText(node["homerange"], "4"));
@@ -235,7 +228,7 @@ namespace Server.Mobiles
             bool group = bool.Parse(GetText(node["group"], "False"));
             TimeSpan maxDelay = TimeSpan.Parse(GetText(node["maxdelay"], "10:00"));
             TimeSpan minDelay = TimeSpan.Parse(GetText(node["mindelay"], "05:00"));
-            IEnumerable<string> creaturesName = LoadCreaturesName(node["creaturesname"]);
+            List<string> creaturesName = LoadCreaturesName(node["creaturesname"]);
 
             string name = GetText(node["name"], "Spawner");
             Point3D location = Point3D.Parse(GetText(node["location"], "Error"));
@@ -255,7 +248,7 @@ namespace Server.Mobiles
             spawner.Respawn();
         }
 
-        private static IEnumerable<string> LoadCreaturesName(XmlElement node)
+        private static List<string> LoadCreaturesName(XmlElement node)
         {
             List<string> names = new List<string>();
 

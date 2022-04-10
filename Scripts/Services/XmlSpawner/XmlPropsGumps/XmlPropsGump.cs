@@ -32,6 +32,7 @@ namespace Server.Gumps
         public static readonly int TextOffsetX = PropsConfig.TextOffsetX;
 
         public static readonly int OffsetGumpID = PropsConfig.OffsetGumpID;
+        public static readonly int HeaderGumpID = PropsConfig.HeaderGumpID;
         public static readonly int EntryGumpID = PropsConfig.EntryGumpID;
         public static readonly int BackGumpID = PropsConfig.BackGumpID;
         public static readonly int SetGumpID = PropsConfig.SetGumpID;
@@ -41,10 +42,24 @@ namespace Server.Gumps
         public static readonly int SetButtonID1 = PropsConfig.SetButtonID1;
         public static readonly int SetButtonID2 = PropsConfig.SetButtonID2;
 
+        public static readonly int PrevWidth = PropsConfig.PrevWidth;
+        public static readonly int PrevOffsetX = PropsConfig.PrevOffsetX, PrevOffsetY = PropsConfig.PrevOffsetY;
+        public static readonly int PrevButtonID1 = PropsConfig.PrevButtonID1;
+        public static readonly int PrevButtonID2 = PropsConfig.PrevButtonID2;
+
+        public static readonly int NextWidth = PropsConfig.NextWidth;
+        public static readonly int NextOffsetX = PropsConfig.NextOffsetX, NextOffsetY = PropsConfig.NextOffsetY;
+        public static readonly int NextButtonID1 = PropsConfig.NextButtonID1;
+        public static readonly int NextButtonID2 = PropsConfig.NextButtonID2;
+
         public static readonly int OffsetSize = PropsConfig.OffsetSize;
 
         public static readonly int EntryHeight = PropsConfig.EntryHeight;
         public static readonly int BorderSize = PropsConfig.BorderSize;
+
+        private static readonly bool PrevLabel = OldStyle, NextLabel = OldStyle;
+
+        private static readonly int PrevLabelOffsetX = PrevWidth + 1;
 
         private static readonly int NameWidth = 103;
         private static readonly int ValueWidth = 82;
@@ -55,6 +70,10 @@ namespace Server.Gumps
         private static readonly int TypeWidth = NameWidth + OffsetSize + ValueWidth;
 
         private static readonly int TotalWidth = OffsetSize + NameWidth + OffsetSize + ValueWidth + OffsetSize + SetWidth + OffsetSize;
+        private static readonly int TotalHeight = OffsetSize + ((EntryHeight + OffsetSize) * (EntryCount + 1));
+
+        private static readonly int BackWidth = BorderSize + TotalWidth + BorderSize;
+        private static readonly int BackHeight = BorderSize + TotalHeight + BorderSize;
 
         public XmlPropertiesGump(Mobile mobile, object o) : base(GumpOffsetX, GumpOffsetY)
         {
@@ -129,10 +148,12 @@ namespace Server.Gumps
             AddImageTiled(BorderSize, BorderSize + EntryHeight, (TotalWidth - (OldStyle ? SetWidth + OffsetSize : 0)) * 3, totalHeight - EntryHeight, OffsetGumpID);
 
             int x = BorderSize + OffsetSize;
-            int y = BorderSize;
+            int y = BorderSize /*+ OffsetSize*/;
 
-            if (m_Object is Item item)
-                AddLabelCropped(x + TextOffsetX, y, TypeWidth - TextOffsetX, EntryHeight, TextHue, item.Name);
+            int emptyWidth = TotalWidth - PrevWidth - NextWidth - (OffsetSize * 4) - (OldStyle ? SetWidth + OffsetSize : 0);
+
+            if (m_Object is Item)
+                AddLabelCropped(x + TextOffsetX, y, TypeWidth - TextOffsetX, EntryHeight, TextHue, ((Item)m_Object).Name);
             int propcount = 0;
             for (int i = 0, index = page * EntryCount; i <= count && index < m_List.Count; ++i, ++index)
             {
@@ -143,6 +164,8 @@ namespace Server.Gumps
                 x = BorderSize + OffsetSize + column * (ValueWidth + NameWidth + OffsetSize * 2 + SetOffsetX + SetWidth);
                 y += EntryHeight + OffsetSize;
 
+
+
                 object o = m_List[index];
 
                 if (o == null)
@@ -150,18 +173,34 @@ namespace Server.Gumps
                     AddImageTiled(x - OffsetSize, y, TotalWidth, EntryHeight, BackGumpID + 4);
                     propcount++;
                 }
-                else if (o is PropertyInfo prop)
+                else
+                /*if ( o is Type )
+				{
+					Type type = (Type)o;
+
+					AddImageTiled( x, y, TypeWidth, EntryHeight, EntryGumpID );
+					AddLabelCropped( x + TextOffsetX, y, TypeWidth - TextOffsetX, EntryHeight, TextHue, type.Name );
+					x += TypeWidth + OffsetSize;
+
+					if ( SetGumpID != 0 )
+						AddImageTiled( x, y, SetWidth, EntryHeight, SetGumpID );
+				}
+				else
+                */
+                if (o is PropertyInfo)
                 {
                     propcount++;
+
+                    PropertyInfo prop = (PropertyInfo)o;
 
                     // look for the default value of the equivalent property in the XmlSpawnerDefaults.DefaultEntry class
 
                     int huemodifier = TextHue;
+                    FieldInfo finfo = null;
                     Mobiles.XmlSpawnerDefaults.DefaultEntry de = new Mobiles.XmlSpawnerDefaults.DefaultEntry();
                     Type ftype = de.GetType();
-
-                    var finfo = ftype.GetField(prop.Name);
-
+                    if (ftype != null)
+                        finfo = ftype.GetField(prop.Name);
                     // is there an equivalent default field?
                     if (finfo != null)
                     {
@@ -190,11 +229,11 @@ namespace Server.Gumps
             }
         }
 
-        public static string[] m_BoolNames = { "True", "False" };
-        public static object[] m_BoolValues = { true, false };
+        public static string[] m_BoolNames = new string[] { "True", "False" };
+        public static object[] m_BoolValues = new object[] { true, false };
 
-        public static string[] m_PoisonNames = { "None", "Lesser", "Regular", "Greater", "Deadly", "Lethal" };
-        public static object[] m_PoisonValues = { null, Poison.Lesser, Poison.Regular, Poison.Greater, Poison.Deadly, Poison.Lethal };
+        public static string[] m_PoisonNames = new string[] { "None", "Lesser", "Regular", "Greater", "Deadly", "Lethal" };
+        public static object[] m_PoisonValues = new object[] { null, Poison.Lesser, Poison.Regular, Poison.Greater, Poison.Deadly, Poison.Lethal };
 
         public override void OnResponse(NetState state, RelayInfo info)
         {
@@ -279,20 +318,20 @@ namespace Server.Gumps
                                 from.SendGump(new XmlSetListOptionGump(prop, from, m_Object, m_Stack, m_Page, m_List, m_PoisonNames, m_PoisonValues));
                             else if (IsType(type, typeofMap))
                                 from.SendGump(new XmlSetListOptionGump(prop, from, m_Object, m_Stack, m_Page, m_List, Map.GetMapNames(), Map.GetMapValues()));
-                            else if (IsType(type, typeofSkills) && m_Object is Mobile mobile)
+                            else if (IsType(type, typeofSkills) && m_Object is Mobile)
                             {
-                                from.SendGump(new XmlPropertiesGump(from, mobile, m_Stack, m_List, m_Page));
-                                from.SendGump(new SkillsGump(from, mobile));
+                                from.SendGump(new XmlPropertiesGump(from, m_Object, m_Stack, m_List, m_Page));
+                                from.SendGump(new SkillsGump(from, (Mobile)m_Object));
                             }
                             else if (HasAttribute(type, typeofPropertyObject, true))
                             {
 #if (NEWTIMERS)
                                 object obj = prop.GetValue(m_Object, null);
 
-                                from.SendGump(obj != null
-                                    ? new XmlPropertiesGump(from, obj, m_Stack,
-                                        new PropertiesGump.StackEntry(m_Object, prop))
-                                    : new XmlPropertiesGump(from, m_Object, m_Stack, m_List, m_Page));
+                                if (obj != null)
+                                    from.SendGump(new XmlPropertiesGump(from, obj, m_Stack, new PropertiesGump.StackEntry(m_Object, prop)));
+                                else
+                                    from.SendGump(new XmlPropertiesGump(from, m_Object, m_Stack, m_List, m_Page));
 #else
 							from.SendGump( new XmlPropertiesGump( from, prop.GetValue( m_Object, null ), m_Stack, m_Object ) );
 #endif
@@ -338,7 +377,7 @@ namespace Server.Gumps
         {
             object[] objs = type.GetCustomAttributes(check, inherit);
 
-            return (objs.Length > 0);
+            return (objs != null && objs.Length > 0);
         }
 
         private static bool IsType(Type type, Type check)
@@ -371,14 +410,14 @@ namespace Server.Gumps
         private static readonly Type typeofPropertyObject = typeof(PropertyObjectAttribute);
         private static readonly Type typeofNoSort = typeof(NoSortAttribute);
 
-        private static readonly Type[] typeofReal =
-        {
+        private static readonly Type[] typeofReal = new Type[]
+            {
                 typeof( float ),
                 typeof( double )
-        };
+            };
 
-        private static readonly Type[] typeofNumeric =
-        {
+        private static readonly Type[] typeofNumeric = new Type[]
+            {
                 typeof( byte ),
                 typeof( short ),
                 typeof( int ),
@@ -387,7 +426,7 @@ namespace Server.Gumps
                 typeof( ushort ),
                 typeof( uint ),
                 typeof( ulong )
-        };
+            };
 
         private string ValueToString(PropertyInfo prop)
         {
@@ -412,31 +451,29 @@ namespace Server.Gumps
             {
                 return "-null-";
             }
-
-            if (o is string s1)
+            else if (o is string)
             {
-                return string.Format("\"{0}\"", s1);
+                return string.Format("\"{0}\"", (string)o);
             }
-
-            if (o is bool)
+            else if (o is bool)
             {
                 return o.ToString();
             }
-
-            if (o is char c)
+            else if (o is char)
             {
-                return string.Format("0x{0:X} '{1}'", (int)c, c);
+                return string.Format("0x{0:X} '{1}'", (int)(char)o, (char)o);
             }
-
-            if (o is Serial s)
+            else if (o is Serial)
             {
+                Serial s = (Serial)o;
+
                 if (s.IsValid)
                 {
                     if (s.IsItem)
                     {
                         return string.Format("(I) 0x{0:X}", s.Value);
                     }
-                    if (s.IsMobile)
+                    else if (s.IsMobile)
                     {
                         return string.Format("(M) 0x{0:X}", s.Value);
                     }
@@ -444,33 +481,30 @@ namespace Server.Gumps
 
                 return string.Format("(?) 0x{0:X}", s.Value);
             }
-
-            if (o is byte || o is sbyte || o is short || o is ushort || o is int || o is uint || o is long || o is ulong)
+            else if (o is byte || o is sbyte || o is short || o is ushort || o is int || o is uint || o is long || o is ulong)
             {
                 return string.Format("{0} (0x{0:X})", o);
             }
-
-            if (o is double)
+            else if (o is double)
             {
                 return o.ToString();
             }
-
-            if (o is Mobile mobile)
+            else if (o is Mobile)
             {
-                return string.Format("(M) 0x{0:X} \"{1}\"", mobile.Serial.Value, mobile.Name);
+                return string.Format("(M) 0x{0:X} \"{1}\"", ((Mobile)o).Serial.Value, ((Mobile)o).Name);
             }
-
-            if (o is Item item)
+            else if (o is Item)
             {
-                return string.Format("(I) 0x{0:X}", item.Serial);
+                return string.Format("(I) 0x{0:X}", ((Item)o).Serial);
             }
-
-            if (o is Type type)
+            else if (o is Type)
             {
-                return type.Name;
+                return ((Type)o).Name;
             }
-
-            return o.ToString();
+            else
+            {
+                return o.ToString();
+            }
         }
 
         private ArrayList BuildList()
@@ -509,8 +543,8 @@ namespace Server.Gumps
 
             if (attrs.Length > 0)
                 return attrs[0] as CPA;
-
-            return null;
+            else
+                return null;
         }
 
         private ArrayList GetGroups(Type objectType, PropertyInfo[] props)
@@ -531,32 +565,21 @@ namespace Server.Gumps
 
                         while (true)
                         {
-                            if (!(type is null))
-                            {
-                                Type baseType = type.BaseType;
+                            Type baseType = type.BaseType;
 
-                                if (baseType == null || baseType == typeofObject)
-                                {
-                                    break;
-                                }
+                            if (baseType == null || baseType == typeofObject)
+                                break;
 
-                                if (baseType.GetProperty(prop.Name, prop.PropertyType) != null)
-                                {
-                                    type = baseType;
-                                }
-                                else
-                                {
-                                    break;
-                                }
-                            }
+                            if (baseType.GetProperty(prop.Name, prop.PropertyType) != null)
+                                type = baseType;
+                            else
+                                break;
                         }
 
                         ArrayList list = (ArrayList)groups[type];
 
                         if (list == null)
-                        {
                             groups[type] = list = new ArrayList();
-                        }
 
                         list.Add(prop);
                     }
@@ -576,8 +599,7 @@ namespace Server.Gumps
             {
                 return s;
             }
-
-            if (t == typeof(byte) || t == typeof(sbyte) || t == typeof(short) || t == typeof(ushort) || t == typeof(int) || t == typeof(uint) || t == typeof(long) || t == typeof(ulong))
+            else if (t == typeof(byte) || t == typeof(sbyte) || t == typeof(short) || t == typeof(ushort) || t == typeof(int) || t == typeof(uint) || t == typeof(long) || t == typeof(ulong))
             {
                 if (s.StartsWith("0x"))
                 {
@@ -585,25 +607,86 @@ namespace Server.Gumps
                     {
                         return Convert.ChangeType(Convert.ToUInt64(s.Substring(2), 16), t);
                     }
-
-                    return Convert.ChangeType(Convert.ToInt64(s.Substring(2), 16), t);
+                    else
+                    {
+                        return Convert.ChangeType(Convert.ToInt64(s.Substring(2), 16), t);
+                    }
                 }
-
-                return Convert.ChangeType(s, t);
+                else
+                {
+                    return Convert.ChangeType(s, t);
+                }
             }
-
-            if (t == typeof(double) || t == typeof(float))
+            else if (t == typeof(double) || t == typeof(float))
             {
                 return Convert.ChangeType(s, t);
             }
-            if (t.IsDefined(typeof(ParsableAttribute), false))
+            else if (t.IsDefined(typeof(ParsableAttribute), false))
             {
-                MethodInfo parseMethod = t.GetMethod("Parse", new[] { typeof(string) });
+                MethodInfo parseMethod = t.GetMethod("Parse", new Type[] { typeof(string) });
 
                 return parseMethod.Invoke(null, new object[] { s });
             }
 
             throw new Exception("bad");
+        }
+
+        private static string GetStringFromObject(object o)
+        {
+            if (o == null)
+            {
+                return "-null-";
+            }
+            else if (o is string)
+            {
+                return string.Format("\"{0}\"", (string)o);
+            }
+            else if (o is bool)
+            {
+                return o.ToString();
+            }
+            else if (o is char)
+            {
+                return string.Format("0x{0:X} '{1}'", (int)(char)o, (char)o);
+            }
+            else if (o is Serial)
+            {
+                Serial s = (Serial)o;
+
+                if (s.IsValid)
+                {
+                    if (s.IsItem)
+                    {
+                        return string.Format("(I) 0x{0:X}", s.Value);
+                    }
+                    else if (s.IsMobile)
+                    {
+                        return string.Format("(M) 0x{0:X}", s.Value);
+                    }
+                }
+
+                return string.Format("(?) 0x{0:X}", s.Value);
+            }
+            else if (o is byte || o is sbyte || o is short || o is ushort || o is int || o is uint || o is long || o is ulong)
+            {
+                return string.Format("{0} (0x{0:X})", o);
+            }
+            else if (o is Mobile)
+            {
+                return string.Format("(M) 0x{0:X} \"{1}\"", ((Mobile)o).Serial.Value, ((Mobile)o).Name);
+            }
+            else if (o is Item)
+            {
+                return string.Format("(I) 0x{0:X}", ((Item)o).Serial);
+            }
+            else if (o is Type)
+            {
+                return ((Type)o).Name;
+            }
+            else
+            {
+                return o.ToString();
+            }
         }
 
         private class PropertySorter : IComparer
@@ -618,9 +701,9 @@ namespace Server.Gumps
             {
                 if (x == null && y == null)
                     return 0;
-                if (x == null)
+                else if (x == null)
                     return -1;
-                if (y == null)
+                else if (y == null)
                     return 1;
 
                 PropertyInfo a = x as PropertyInfo;
@@ -660,9 +743,9 @@ namespace Server.Gumps
             {
                 if (x == null && y == null)
                     return 0;
-                if (x == null)
+                else if (x == null)
                     return -1;
-                if (y == null)
+                else if (y == null)
                     return 1;
 
                 if (!(x is DictionaryEntry) || !(y is DictionaryEntry))

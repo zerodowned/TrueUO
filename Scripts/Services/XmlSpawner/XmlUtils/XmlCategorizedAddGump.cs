@@ -5,8 +5,14 @@ using System.Collections;
 using System.IO;
 using System.Xml;
 
+/*
+** Modified from RunUO 1.0.0 CategorizedAddGump.cs
+** by ArteGordon
+** 2/5/05
+*/
 namespace Server.Gumps
 {
+
     public abstract class XmlAddCAGNode
     {
         public abstract string Caption { get; }
@@ -16,11 +22,16 @@ namespace Server.Gumps
     public class XmlAddCAGObject : XmlAddCAGNode
     {
         private readonly Type m_Type;
+        private readonly int m_ItemID;
+        private readonly int m_Hue;
         private readonly XmlAddCAGCategory m_Parent;
 
-        public int ItemID { get; }
+        public Type Type => m_Type;
+        public int ItemID => m_ItemID;
+        public int Hue => m_Hue;
+        public XmlAddCAGCategory Parent => m_Parent;
 
-        public override string Caption => m_Type == null ? "bad type" : m_Type.Name;
+        public override string Caption => (m_Type == null ? "bad type" : m_Type.Name);
 
         public override void OnClick(Mobile from, int page, int index, Gump gump)
         {
@@ -30,19 +41,24 @@ namespace Server.Gumps
             }
             else
             {
-                if (gump is XmlAddGump xmladdgump)
+                if (gump is XmlAddGump)
                 {
+                    XmlAddGump xmladdgump = (XmlAddGump)gump;
+
                     //Commands.Handle( from, String.Format( "{0}Add {1}", Commands.CommandPrefix, m_Type.Name ) );
-                    if (xmladdgump.defs?.NameList != null && index >= 0 && index < xmladdgump.defs.NameList.Length)
+                    if (xmladdgump != null && xmladdgump.defs != null && xmladdgump.defs.NameList != null &&
+                        index >= 0 && index < xmladdgump.defs.NameList.Length)
                     {
+
                         xmladdgump.defs.NameList[index] = m_Type.Name;
                         XmlAddGump.Refresh(from, true);
                     }
                     from.SendGump(new XmlCategorizedAddGump(from, m_Parent, page, index, xmladdgump));
                 }
-                else if (gump is XmlSpawnerGump spawnerGump)
+                else
+                    if (gump is XmlSpawnerGump)
                 {
-                    XmlSpawner m_Spawner = spawnerGump.m_Spawner;
+                    XmlSpawner m_Spawner = ((XmlSpawnerGump)gump).m_Spawner;
 
                     if (m_Spawner != null)
                     {
@@ -50,6 +66,7 @@ namespace Server.Gumps
 
                         if (xg != null)
                         {
+
                             xg.Rentry = new XmlSpawnerGump.ReplacementEntry
                             {
                                 Typename = m_Type.Name,
@@ -58,13 +75,15 @@ namespace Server.Gumps
                             };
 
                             Timer.DelayCall(TimeSpan.Zero, new TimerStateCallback(XmlSpawnerGump.Refresh_Callback), new object[] { from });
+                            //from.CloseGump(typeof(XmlSpawnerGump));
+                            //from.SendGump( new XmlSpawnerGump(xg.m_Spawner, xg.X, xg.Y, xg.m_ShowGump, xg.xoffset, xg.page, xg.Rentry) );
                         }
                     }
                 }
             }
         }
 
-        public XmlAddCAGObject(XmlAddCAGCategory parent, XmlReader xml)
+        public XmlAddCAGObject(XmlAddCAGCategory parent, XmlTextReader xml)
         {
             m_Parent = parent;
 
@@ -72,20 +91,22 @@ namespace Server.Gumps
                 m_Type = ScriptCompiler.FindTypeByFullName(xml.Value, false);
 
             if (xml.MoveToAttribute("gfx"))
-                ItemID = XmlConvert.ToInt32(xml.Value);
+                m_ItemID = XmlConvert.ToInt32(xml.Value);
 
             if (xml.MoveToAttribute("hue"))
-                XmlConvert.ToInt32(xml.Value);
+                m_Hue = XmlConvert.ToInt32(xml.Value);
         }
     }
 
     public class XmlAddCAGCategory : XmlAddCAGNode
     {
         private readonly string m_Title;
+        private readonly XmlAddCAGNode[] m_Nodes;
+        private readonly XmlAddCAGCategory m_Parent;
 
-        public XmlAddCAGNode[] Nodes { get; }
-
-        public XmlAddCAGCategory Parent { get; }
+        public string Title => m_Title;
+        public XmlAddCAGNode[] Nodes => m_Nodes;
+        public XmlAddCAGCategory Parent => m_Parent;
 
         public override string Caption => m_Title;
 
@@ -97,16 +118,20 @@ namespace Server.Gumps
         private XmlAddCAGCategory()
         {
             m_Title = "no data";
-            Nodes = new XmlAddCAGNode[0];
+            m_Nodes = new XmlAddCAGNode[0];
         }
 
-        public XmlAddCAGCategory(XmlAddCAGCategory parent, XmlReader xml)
+        public XmlAddCAGCategory(XmlAddCAGCategory parent, XmlTextReader xml)
         {
-            Parent = parent;
+            m_Parent = parent;
 
             if (xml.MoveToAttribute("title"))
             {
-                m_Title = xml.Value == "Add Menu" ? "XmlAdd Menu" : xml.Value;
+                if (xml.Value == "Add Menu")
+                    m_Title = "XmlAdd Menu";
+                else
+                    m_Title = xml.Value;
+
             }
             else
                 m_Title = "empty";
@@ -116,7 +141,7 @@ namespace Server.Gumps
 
             if (xml.IsEmptyElement)
             {
-                Nodes = new XmlAddCAGNode[0];
+                m_Nodes = new XmlAddCAGNode[0];
             }
             else
             {
@@ -133,6 +158,7 @@ namespace Server.Gumps
                         {
                             if (!xml.IsEmptyElement)
                             {
+
                                 nodes.Add(new XmlAddCAGCategory(this, xml));
                             }
                         }
@@ -146,12 +172,24 @@ namespace Server.Gumps
                     Console.WriteLine("XmlCategorizedAddGump: Corrupted Data/objects.xml file detected. Not all XmlCAG objects loaded. {0}", ex);
                 }
 
-                Nodes = (XmlAddCAGNode[])nodes.ToArray(typeof(XmlAddCAGNode));
+
+                m_Nodes = (XmlAddCAGNode[])nodes.ToArray(typeof(XmlAddCAGNode));
+
             }
         }
 
         private static XmlAddCAGCategory m_Root;
-        public static XmlAddCAGCategory Root => m_Root ?? (m_Root = Load("Data/objects.xml"));
+
+        public static XmlAddCAGCategory Root
+        {
+            get
+            {
+                if (m_Root == null)
+                    m_Root = Load("Data/objects.xml");
+
+                return m_Root;
+            }
+        }
 
         public static XmlAddCAGCategory Load(string path)
         {
@@ -178,6 +216,8 @@ namespace Server.Gumps
             return new XmlAddCAGCategory();
         }
     }
+
+
 
     public class XmlCategorizedAddGump : Gump
     {
@@ -212,29 +252,32 @@ namespace Server.Gumps
 
         public static readonly int OffsetSize = PropsConfig.OffsetSize;
 
-        public static readonly int EntryHeight = 24;
+        public static readonly int EntryHeight = 24;//PropsConfig.EntryHeight;
         public static readonly int BorderSize = PropsConfig.BorderSize;
 
         private static readonly bool PrevLabel = false, NextLabel = false;
 
         private static readonly int PrevLabelOffsetX = PrevWidth + 1;
-        private const int PrevLabelOffsetY = 0;
+        private static readonly int PrevLabelOffsetY = 0;
 
-        private const int NextLabelOffsetX = -29;
-        private const int NextLabelOffsetY = 0;
+        private static readonly int NextLabelOffsetX = -29;
+        private static readonly int NextLabelOffsetY = 0;
 
-        private const int EntryWidth = 180;
-        private const int EntryCount = 15;
+        private static readonly int EntryWidth = 180;
+        private static readonly int EntryCount = 15;
 
         private static readonly int TotalWidth = OffsetSize + EntryWidth + OffsetSize + SetWidth + OffsetSize;
+        private static readonly int TotalHeight = OffsetSize + ((EntryHeight + OffsetSize) * (EntryCount + 1));
 
         private static readonly int BackWidth = BorderSize + TotalWidth + BorderSize;
+        private static readonly int BackHeight = BorderSize + TotalHeight + BorderSize;
         private readonly Mobile m_Owner;
         private readonly XmlAddCAGCategory m_Category;
         private int m_Page;
 
-        private readonly int m_Index;
+        private readonly int m_Index = -1;
         private readonly Gump m_Gump;
+        private readonly XmlSpawner m_Spawner;
 
         public XmlCategorizedAddGump(Mobile owner, int index, Gump gump) : this(owner, XmlAddCAGCategory.Root, 0, index, gump)
         {
@@ -255,14 +298,22 @@ namespace Server.Gumps
 
             m_Index = index;
             m_Gump = gump;
-
-            if (gump is XmlAddGump xmladdgump)
+            if (gump is XmlAddGump)
             {
-                if (xmladdgump.defs != null)
+                XmlAddGump xmladdgump = (XmlAddGump)gump;
+
+                if (xmladdgump != null && xmladdgump.defs != null)
                 {
                     xmladdgump.defs.CurrentCategory = category;
                     xmladdgump.defs.CurrentCategoryPage = page;
                 }
+            }
+            else
+                if (gump is XmlSpawnerGump)
+            {
+                m_Spawner = ((XmlSpawnerGump)gump).m_Spawner;
+
+
             }
 
             Initialize(page);
@@ -358,8 +409,9 @@ namespace Server.Gumps
 
                 AddButton(x + SetOffsetX, y + SetOffsetY, SetButtonID1, SetButtonID2, i + 4, GumpButtonType.Reply, 0);
 
-                if (node is XmlAddCAGObject obj)
+                if (node is XmlAddCAGObject)
                 {
+                    XmlAddCAGObject obj = (XmlAddCAGObject)node;
                     int itemID = obj.ItemID;
 
                     Rectangle2D bounds = ItemBounds.Table[itemID];

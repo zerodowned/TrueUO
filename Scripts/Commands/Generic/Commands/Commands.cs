@@ -508,6 +508,40 @@ namespace Server.Commands.Generic
             return false;
         }
 
+        public override bool ValidateArgs(BaseCommandImplementor impl, CommandEventArgs e)
+        {
+            if (e.Length >= 1)
+            {
+                Type t = ScriptCompiler.FindTypeByName(e.GetString(0));
+
+                if (t == null)
+                {
+                    e.Mobile.SendMessage("No type with that name was found.");
+
+                    string match = e.GetString(0).Trim();
+
+                    if (match.Length < 3)
+                    {
+                        e.Mobile.SendMessage("Invalid search string.");
+                        e.Mobile.SendGump(new AddGump(e.Mobile, match, 0, Type.EmptyTypes, false));
+                    }
+                    else
+                    {
+                        e.Mobile.SendGump(new AddGump(e.Mobile, match, 0, AddGump.Match(match).ToArray(), true));
+                    }
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                e.Mobile.SendGump(new CategorizedAddGump(e.Mobile));
+            }
+
+            return false;
+        }
         public override void Execute(CommandEventArgs e, object obj)
         {
             IPoint3D p = obj as IPoint3D;

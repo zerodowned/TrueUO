@@ -30,6 +30,7 @@ namespace Server.Gumps
         public static readonly int TextOffsetX = PropsConfig.TextOffsetX;
 
         public static readonly int OffsetGumpID = PropsConfig.OffsetGumpID;
+        public static readonly int HeaderGumpID = PropsConfig.HeaderGumpID;
         public static readonly int EntryGumpID = PropsConfig.EntryGumpID;
         public static readonly int BackGumpID = PropsConfig.BackGumpID;
         public static readonly int SetGumpID = PropsConfig.SetGumpID;
@@ -39,6 +40,16 @@ namespace Server.Gumps
         public static readonly int SetButtonID1 = PropsConfig.SetButtonID1;
         public static readonly int SetButtonID2 = PropsConfig.SetButtonID2;
 
+        public static readonly int PrevWidth = PropsConfig.PrevWidth;
+        public static readonly int PrevOffsetX = PropsConfig.PrevOffsetX, PrevOffsetY = PropsConfig.PrevOffsetY;
+        public static readonly int PrevButtonID1 = PropsConfig.PrevButtonID1;
+        public static readonly int PrevButtonID2 = PropsConfig.PrevButtonID2;
+
+        public static readonly int NextWidth = PropsConfig.NextWidth;
+        public static readonly int NextOffsetX = PropsConfig.NextOffsetX, NextOffsetY = PropsConfig.NextOffsetY;
+        public static readonly int NextButtonID1 = PropsConfig.NextButtonID1;
+        public static readonly int NextButtonID2 = PropsConfig.NextButtonID2;
+
         public static readonly int OffsetSize = PropsConfig.OffsetSize;
 
         public static readonly int EntryHeight = PropsConfig.EntryHeight;
@@ -47,7 +58,7 @@ namespace Server.Gumps
         private static readonly int EntryWidth = 212;
 
         private static readonly int TotalWidth = OffsetSize + EntryWidth + OffsetSize + SetWidth + OffsetSize;
-        private static readonly int TotalHeight = OffsetSize + 2 * (EntryHeight + OffsetSize);
+        private static readonly int TotalHeight = OffsetSize + (2 * (EntryHeight + OffsetSize));
 
         private static readonly int BackWidth = BorderSize + TotalWidth + BorderSize;
         private static readonly int BackHeight = BorderSize + TotalHeight + BorderSize;
@@ -67,6 +78,7 @@ namespace Server.Gumps
 
             bool canNull = !prop.PropertyType.IsValueType;
             bool canDye = prop.IsDefined(typeof(HueAttribute), false);
+            bool isBody = prop.IsDefined(typeof(BodyAttribute), false);
 
             int xextend = 0;
             if (prop.PropertyType == typeof(string))
@@ -75,13 +87,17 @@ namespace Server.Gumps
             }
 
             object val = prop.GetValue(m_Object, null);
+            string initialText;
 
-            var initialText = val == null ? "" : val.ToString();
+            if (val == null)
+                initialText = "";
+            else
+                initialText = val.ToString();
 
             AddPage(0);
 
-            AddBackground(0, 0, BackWidth + xextend, BackHeight + (canNull ? (EntryHeight + OffsetSize) : 0) + (canDye ? (EntryHeight + OffsetSize) : 0), BackGumpID);
-            AddImageTiled(BorderSize, BorderSize, TotalWidth + xextend - (OldStyle ? SetWidth + OffsetSize : 0), TotalHeight + (canNull ? EntryHeight + OffsetSize : 0) + (canDye ? (EntryHeight + OffsetSize) : 0), OffsetGumpID);
+            AddBackground(0, 0, BackWidth + xextend, BackHeight + (canNull ? (EntryHeight + OffsetSize) : 0) + (canDye ? (EntryHeight + OffsetSize) : 0) + (isBody ? (EntryHeight + OffsetSize) : 0), BackGumpID);
+            AddImageTiled(BorderSize, BorderSize, TotalWidth + xextend - (OldStyle ? SetWidth + OffsetSize : 0), TotalHeight + (canNull ? (EntryHeight + OffsetSize) : 0) + (canDye ? (EntryHeight + OffsetSize) : 0) + (isBody ? (EntryHeight + OffsetSize) : 0), OffsetGumpID);
 
             int x = BorderSize + OffsetSize;
             int y = BorderSize + OffsetSize;
@@ -133,6 +149,21 @@ namespace Server.Gumps
                     AddImageTiled(x, y, SetWidth, EntryHeight, SetGumpID);
 
                 AddButton(x + SetOffsetX, y + SetOffsetY, SetButtonID1, SetButtonID2, 3, GumpButtonType.Reply, 0);
+            }
+
+            if (isBody)
+            {
+                x = BorderSize + OffsetSize;
+                y += EntryHeight + OffsetSize;
+
+                AddImageTiled(x, y, EntryWidth + xextend, EntryHeight, EntryGumpID);
+                AddLabelCropped(x + TextOffsetX, y, EntryWidth + xextend - TextOffsetX, EntryHeight, TextHue, "Body Picker");
+                x += EntryWidth + xextend + OffsetSize;
+
+                if (SetGumpID != 0)
+                    AddImageTiled(x, y, SetWidth, EntryHeight, SetGumpID);
+
+                AddButton(x + SetOffsetX, y + SetOffsetY, SetButtonID1, SetButtonID2, 4, GumpButtonType.Reply, 0);
             }
         }
 
@@ -231,6 +262,16 @@ namespace Server.Gumps
                         shouldSend = false;
 
                         m_Mobile.SendHuePicker(new InternalPicker(m_Property, m_Mobile, m_Object, m_Stack, m_Page, m_List));
+
+                        break;
+                    }
+                case 4: // Body Picker
+                    {
+                        toSet = null;
+                        shouldSet = false;
+                        shouldSend = false;
+
+                        m_Mobile.SendGump(new SetBodyGump(m_Property, m_Mobile, m_Object, new Stack(m_Stack), m_Page, m_List));
 
                         break;
                     }

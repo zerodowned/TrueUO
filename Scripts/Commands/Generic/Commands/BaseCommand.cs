@@ -98,6 +98,11 @@ namespace Server.Commands.Generic
             return true;
         }
 
+        public virtual bool ValidateArgs(BaseCommandImplementor impl, CommandEventArgs e)
+        {
+            return true;
+        }
+
         public void AddResponse(string message)
         {
             for (int i = 0; i < m_Responses.Count; ++i)
